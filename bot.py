@@ -2,7 +2,7 @@ import os
 import logging
 from dotenv import load_dotenv
 from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
 
 # Load environment variables
 load_dotenv()
@@ -18,16 +18,16 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Command: /start
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def start(update: Update, context: CallbackContext) -> None:
     user = update.effective_user
-    await update.message.reply_text(
+    update.message.reply_text(
         f"👋 Hi {user.first_name}!\n\n"
         f"I'm your 24/7 Telegram Bot!\n"
         f"Type /help to see available commands."
     )
 
 # Command: /help
-async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def help_command(update: Update, context: CallbackContext) -> None:
     help_text = """
 📋 Available Commands:
 
@@ -38,21 +38,21 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> No
 💡 Just send me any message!
 I'll reply to anything you say.
     """
-    await update.message.reply_text(help_text)
+    update.message.reply_text(help_text)
 
 # Command: /echo
-async def echo(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def echo(update: Update, context: CallbackContext) -> None:
     if context.args:
         text = ' '.join(context.args)
-        await update.message.reply_text(f"🔊 Echo: {text}")
+        update.message.reply_text(f"🔊 Echo: {text}")
     else:
-        await update.message.reply_text("Please add text: /echo Hello World!")
+        update.message.reply_text("Please add text: /echo Hello World!")
 
 # Handle regular messages
-async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
+def handle_message(update: Update, context: CallbackContext) -> None:
     user_msg = update.message.text
     reply = f"📝 You said: {user_msg}\n\nNice to chat with you! 😊"
-    await update.message.reply_text(reply)
+    update.message.reply_text(reply)
 
 def main():
     """Start the bot"""
@@ -61,16 +61,19 @@ def main():
         logger.error("❌ Bot token not found in .env file!")
         return
     
-    # Create application
-    application = Application.builder().token(BOT_TOKEN).build()
+    # Create updater
+    updater = Updater(BOT_TOKEN, use_context=True)
+    
+    # Get dispatcher
+    dispatcher = updater.dispatcher
     
     # Add handlers
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("help", help_command))
-    application.add_handler(CommandHandler("echo", echo))
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("help", help_command))
+    dispatcher.add_handler(CommandHandler("echo", echo))
     
     # Handle text messages
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
     
     # Start bot
     logger.info("🤖 Bot is starting...")
@@ -81,7 +84,8 @@ def main():
     print("Commands: /start, /help, /echo")
     print("Press Ctrl+C to stop\n")
     
-    application.run_polling()
+    updater.start_polling()
+    updater.idle()
 
 if __name__ == '__main__':
     main()
